@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {% block head %}
+    <title>{% block title %}{% endblock %} - Add service</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 40px 20px;
+            display: flex;
+            justify-content: center;
+        }
+        .list-container {
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 500px;
+        }
+        h2 {
+            margin: 0 0 20px;
+            font-size: 24px;
+            color: #333;
+        }
+        .service-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 12px;
+            border-bottom: 1px solid #eee;
+            font-size: 16px;
+            color: #555;
+        }
+        .service-item:last-child {
+            border-bottom: none;
+        }
+        .service-id {
+            font-weight: bold;
+            color: #333;
+        }
+    </style>
+    {% endblock %}
+</head>
+<body>
+    <div id="content" class="list-container">
+        {% block content %}
+        <h2>Eventos</h2>
+        {% for service in services %}
+            <p class="service-item">
+                <span class="service-id">{{ service.id }}</span>
+                <a href="/services/{{service.id}}/edit">{{ service.name }}</a>
+                <a href="/service/{{service.id}}/roster">Escala</a>
+            </p>
+        {% endfor %}
+        {% endblock %}
+    </div>
+</body>
+</html>

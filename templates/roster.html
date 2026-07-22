@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {% block head %}
+    <title>{% block title %}{% endblock %} - Add roster</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background-color: #f4f4f9;
+        margin: 0;
+        padding: 40px 20px;
+        display: flex;
+        justify-content: center;
+    }
+    .list-container {
+        background: #ffffff;
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        width: 100%;
+        max-width: 600px;
+    }
+    h2 {
+        margin: 0 0 20px;
+        font-size: 24px;
+        color: #333;
+    }
+    .roster-item {
+        display: grid;
+        grid-template-columns: 60px 1fr 1fr 1fr;
+        align-items: center;
+        padding: 10px 12px;
+        border-bottom: 1px solid #eee;
+        font-size: 16px;
+        color: #555;
+    }
+    .roster-item:last-child {
+        border-bottom: none;
+    }
+    .roster-id {
+        font-weight: bold;
+        color: #333;
+    }
+    .roster-item {
+    display: grid;
+    grid-template-columns: 60px 1fr 1fr 1fr 40px;
+    align-items: center;
+    padding: 10px 12px;
+    border-bottom: 1px solid #eee;
+    font-size: 16px;
+    color: #555;
+    }
+
+    .add-container {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 16px;
+    }
+    .btn-add {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 18px;
+    background-color: #4CAF50;
+    color: #fff;
+    font-size: 15px;
+    font-weight: bold;
+    text-decoration: none;
+    border-radius: 6px;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+    }
+    .btn-add:hover {
+        background-color: #43a047;
+    }
+    .btn-add:active {
+        transform: scale(0.97);
+    }
+    .btn-add::before {
+        content: "+";
+        font-size: 18px;
+        line-height: 1;
+    }
+    .btn-delete {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        justify-self: end;
+        width: 34px;
+        height: 34px;
+        padding: 0;
+        border: none;
+        border-radius: 6px;
+        background-color: #fdecea;
+        color: #d32f2f;
+        cursor: pointer;
+        transition: background-color 0.2s ease, transform 0.1s ease;
+    }
+    .btn-delete:hover {
+        background-color: #f5c6c2;
+    }
+    .btn-delete:active {
+        transform: scale(0.95);
+    }
+    .btn-delete svg {
+        width: 16px;
+        height: 16px;
+        fill: currentColor;
+    }
+</style>
+    {% endblock %}
+</head>
+<body>
+    <div id="content" class="list-container">
+        {% block content %}
+        <h2>Escala - {{service.name}}</h2>
+        {% for roster in rosters %}
+        <div class="roster-item">
+            <span class="roster-id">{{ roster.id }}</span>
+            <span>Id: {{ roster.user_id }}</span>
+            {% for user in users %}
+                {% if user.id == roster.user_id %}
+                <span>Nome: {{ user.username }}</span>
+                {% endif %}
+            {% endfor %}
+            <span>Função: {{ roster.role }}</span>
+            <form action="/service/{{service.id}}/roster/{{roster.id}}/delete" method="POST" style="display: contents;">
+                <button class="btn-delete" data-id="{{ roster.id }}" title="Remover">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M9 3h6a1 1 0 0 1 1 1v1h5v2h-1.06l-.94 14.1A2 2 0 0 1 17.01 23H6.99a2 2 0 0 1-1.99-1.9L4.06 7H3V5h5V4a1 1 0 0 1 1-1zm1 2h4V5h-4v0zM6.07 7l.93 14h10l.93-14H6.07zM10 9h2v10h-2V9zm4 0h2v10h-2V9z"/>
+                    </svg>
+                </button>
+            </form>
+        </div>
+        {% endfor %}
+        <div class="add-container">
+            <a class="btn-add" href="/service/{{service.id}}/add_to_roster">Adicionar</a>
+        </div>
+        {% endblock %}
+    </div>
+</body>
+<script>
+    const delete_buttons = document.querySelectorAll(".btn-delete");
+
+    delete_buttons.forEach(function(button) {
+    button.addEventListener("click", function(event) {
+        const confirmado = confirm("Tem certeza que deseja remover da escala?");
+        if (!confirmado) {
+            event.preventDefault();
+        } else {
+            alert("Deletado com sucesso!")
+        }
+    });
+});
+</script>
+</html>
