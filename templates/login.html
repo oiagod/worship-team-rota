@@ -37,8 +37,7 @@
                 color: #555;
             }
             input[type="text"],
-            input[type="email"],
-            input[type="password"]{
+            input[type="password"] {
                 width: 100%;
                 padding: 10px;
                 border: 1px solid #ccc;
@@ -64,6 +63,35 @@
             button:hover {
                 background-color: #0056b3;
             }
+            .flash-messages {
+                margin-bottom: 15px;
+            }
+            .flash {
+                padding: 10px;
+                border-radius: 4px;
+                margin-bottom: 8px;
+                font-size: 14px;
+            }
+            .flash.warning {
+                background-color: #fff3cd;
+                color: #856404;
+                border: 1px solid #ffeeba;
+            }
+            .flash.success {
+                background-color: #d4edda;
+                color: #155724;
+                border: 1px solid #c3e6cb;
+            }
+	    .flash.info {
+		background-color: #d1ecf1;
+		color: #0c5460;
+		border: 1px solid #bee5eb;
+	    }
+	   .flash.danger {
+	       background-color: #f8d7da;
+	       color: #721c24;
+	       border: 1px solid #f5c6cb;
+	    }
         </style>
     {% endblock %}
 </head>
@@ -71,26 +99,29 @@
     <div id="content">
         {% block content %}
         <div class="form-container">
-            <h2>Cadastre-se</h2>
-                <form action="/create_user" method="POST">
-                    <div class="form-group">
-                        <label for="username">Nome</label>
-                        <input type="text" id="username" name="username" placeholder="Digite seu nome" required>
-                    </div>
+            <h2>Login</h2>
 
-                    <div class="form-group">
-                        <label for="email">E-mail</label>
-                        <input type="email" id="email" name="email" placeholder="seu@email.com" required>
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-messages">
+                        {% for category, message in messages %}
+                            <div class="flash {{ category }}">{{ message }}</div>
+                        {% endfor %}
                     </div>
+                {% endif %}
+            {% endwith %}
 
-                    <div class="form-group">
-                        <label for="password">Senha</label>
-                        <input type="password" id="password" name="password" required>
-                    </div>
-
-                    <button type="submit">Enviar</button>
-                </form>
-            </div>
+            <form action="{{ url_for('login') }}" method="POST">
+                <div class="form-group">
+                    <label for="username">Nome</label>
+                    <input type="text" id="username" name="username" placeholder="Digite seu nome" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Senha</label>
+                    <input type="password" id="password" name="password" placeholder="Digite sua senha" required>
+                </div>
+                <button type="submit">Entrar</button>
+            </form>
         </div>
         {% endblock %}
     </div>

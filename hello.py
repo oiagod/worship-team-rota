@@ -1,9 +1,13 @@
-from flask import Flask, render_template, request, abort, redirect, url_for
+from flask import Flask, render_template, request, abort, redirect, url_for, session, flash
+from sqlalchemy.engine import url
+from config import Config
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy import ForeignKey, select
 from datetime import datetime, timezone
 from sqlalchemy.orm import Mapped, mapped_column
+from werkzeug.security import generate_password_hash, check_password_hash
+from functools import wraps
 
 
 class Base(DeclarativeBase):
@@ -12,7 +16,8 @@ class Base(DeclarativeBase):
 db = SQLAlchemy(model_class=Base)
 app = Flask(__name__)
 
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///app.db"
+app.secret_key = "1234"
+app.config.from_object(Config)
 
 db.init_app(app)
 
@@ -21,6 +26,14 @@ class User(db.Model):
     id: Mapped[int] = mapped_column(primary_key=True)
     username: Mapped[str] = mapped_column(unique=True)
     email: Mapped[str]
+    password_hash: Mapped[str]
+    
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
 
 class Roster(db.Model):
     __tablename__ = "roster"
@@ -35,14 +48,72 @@ class Service(db.Model):
     name: Mapped[str]
     date: Mapped[datetime] =  mapped_column(default=lambda: datetime.now(timezone.utc))
 
+
 with app.app_context():
     db.create_all()
 
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if "username" not in session:
+            flash('Please log in to access this page', 'danger')
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
 @app.route("/")
-def hello_world():
-    return "<h1>Hello, World!</h1>"
+def home():
+    if 'username' in session:
+        return redirect(url_for('dashboard'))
+    return redirect(url_for('login'))
+
+@app.route('/dashboard')
+@login_required
+def dashboard():
+    return render_template('dashboard.html', username=session['username'])
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    flash("You've been logged out!", "info")
+    return redirect(url_for('login'))
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if 'username' in session:
+        return redirect(url_for('dashboard'))
+
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
+
+        # Input validation
+        if not username or not password:
+            flash("Please fill all the fields.", 'warning')
+            return render_template("login.html")
+
+        stmt = db.session.execute(select(User).where(User.username == username))
+        user = stmt.scalars().one_or_none()
+
+        if user is None:
+            flash('Invalid username or password', 'warning')
+            return render_template('login.html')
+
+        if user.check_password(password):
+            session.clear()
+            session.permanent = True
+            session["username"] = username
+            flash("Logged in successfully!", "success")
+            return redirect(url_for("dashboard"))
+
+        flash("Invalid username or password", 'warning')
+
+    return render_template("login.html")
+
+
 
 @app.route("/users")
+@login_required
 def get_users():
     all_users = select(User)       
     result = db.session.execute(all_users)
@@ -50,6 +121,7 @@ def get_users():
     return render_template('users.html', users=user_list)
 
 @app.route('/users/<int:user_id>/edit')
+@login_required
 def edit_user(user_id):
     user = db.session.get(User, user_id)
     if user is None:
@@ -57,6 +129,7 @@ def edit_user(user_id):
     return render_template("edit_user.html", user=user)
 
 @app.route("/update_user/<int:user_id>", methods=['POST'])
+@login_required
 def update_user(user_id):
     user = db.session.get(User, user_id)
     if user is None:
@@ -69,6 +142,7 @@ def update_user(user_id):
     return redirect(url_for("get_users"))
 
 @app.route("/delete_user/<int:user_id>", methods=['POST'])
+@login_required
 def delete_user(user_id):
     user = db.session.get(User, user_id)
     if user is None:
@@ -78,6 +152,7 @@ def delete_user(user_id):
     return redirect(url_for("get_users"))
 
 @app.route("/services")
+@login_required
 def get_services():
     all_services = select(Service)       
     result = db.session.execute(all_services)
@@ -85,6 +160,7 @@ def get_services():
     return render_template("services.html", services=services_list)
 
 @app.route("/services/<int:service_id>/edit")
+@login_required
 def edit_service(service_id):
     service = db. session.get(Service, service_id)
     if service is None:
@@ -92,6 +168,7 @@ def edit_service(service_id):
     return render_template("edit_service.html", service=service)
 
 @app.route("/update_service/<int:service_id>", methods=['POST'])
+@login_required
 def update_service(service_id):
    service = db.session.get(Service, service_id) 
    if service is None:
@@ -104,6 +181,7 @@ def update_service(service_id):
    return redirect(url_for("get_services"))
 
 @app.route("/delete_service/<int:service_id>", methods=['POST'])
+@login_required
 def delete_service(service_id):
     service = db.session.get(Service, service_id)
     if service is None:
@@ -113,6 +191,7 @@ def delete_service(service_id):
     return redirect(url_for("get_services"))
 
 @app.route("/service/<int:service_id>/roster")
+@login_required
 def get_service_roster(service_id):
     service = db.session.get(Service, service_id)
     if service is None:
@@ -131,20 +210,26 @@ def signup():
     return render_template('signup.html')
 
 @app.route("/create_user", methods=["POST"])
+@login_required
 def create_user():
-    username = request.form.get("username")
-    email = request.form.get("email")
-
-    db.session.add(User(username=username, email=email))
+    user = User()
+    user.username = request.form.get("username")
+    user.email = request.form.get("email")
+    password = request.form.get("password")
+    user.set_password(password)
+   
+    db.session.add(user)
     db.session.commit()
 
     return redirect(url_for("get_users"))
 
 @app.route("/add_service")
+@login_required
 def add_service():
     return render_template('add_service.html')
 
 @app.route("/service/<int:service_id>/add_to_roster", methods=['GET', 'POST'])
+@login_required
 def add_to_roster(service_id):
     if request.method == "POST":
         user_id = request.form.get("user")
@@ -160,6 +245,7 @@ def add_to_roster(service_id):
     return render_template("add_to_roster.html", users=user_list, service=service)
 
 @app.route("/service/<int:service_id>/roster/<int:roster_id>/delete", methods=['POST'])
+@login_required
 def delete_from_roster(roster_id, service_id):
     service = db.session.get(Service, service_id)
     roster = db.session.get(Roster, roster_id)
@@ -171,6 +257,7 @@ def delete_from_roster(roster_id, service_id):
 
 
 @app.route("/create_service", methods=["POST"])
+@login_required
 def create_service():
     name = request.form.get("name")
     date = datetime.fromisoformat(request.form.get("date"))
