@@ -17,7 +17,6 @@ class Base(DeclarativeBase):
 db = SQLAlchemy(model_class=Base)
 app = Flask(__name__)
 
-app.secret_key = "1234"
 app.config.from_object(Config)
 
 db.init_app(app)
