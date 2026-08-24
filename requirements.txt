@@ -1,3 +1,4 @@
+gunicorn==26.2.0
 kaggle==1.5.16
 nltk==3.9.1
 psycopg2-binary==2.9.12
