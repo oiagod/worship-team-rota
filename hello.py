@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Mapped, mapped_column
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
+import os
 
 
 class Base(DeclarativeBase):
@@ -21,12 +22,15 @@ app.config.from_object(Config)
 
 db.init_app(app)
 
+
+
 class User(db.Model):
     __tablename__ = "users"
     id: Mapped[int] = mapped_column(primary_key=True)
-    username: Mapped[str] = mapped_column(unique=True)
-    email: Mapped[str]
-    password_hash: Mapped[str]
+    username: Mapped[str]
+    email: Mapped[str] = mapped_column(unique=True)
+    password_hash: Mapped[str | None]
+    access_level: Mapped[str] = mapped_column(default="member")
     
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -48,14 +52,26 @@ class Service(db.Model):
     name: Mapped[str]
     date: Mapped[datetime] =  mapped_column(default=lambda: datetime.now(timezone.utc))
 
+def setup_admin():
+    email = os.environ.get("ADMIN_EMAIL")
+    password = os.environ.get("ADMIN_PASSWORD")
+    stmt = db.session.execute(select(User).where(User.access_level=="admin"))
+    admin_exists = stmt.scalars().one_or_none()
+
+    if not admin_exists:
+        new_admin = User(username="admin", email=email, access_level="admin")
+        new_admin.set_password(password)
+        db.session.add(new_admin)
+        db.session.commit()
 
 with app.app_context():
     db.create_all()
+    setup_admin()
 
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if "username" not in session:
+        if "email" not in session:
             flash('Please log in to access this page', 'danger')
             return redirect(url_for('login'))
         return f(*args, **kwargs)
@@ -70,7 +86,7 @@ def home():
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    return render_template('dashboard.html', username=session['username'])
+    return render_template('dashboard.html', email=session['email'])
 
 @app.route('/logout')
 def logout():
@@ -80,33 +96,33 @@ def logout():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    if 'username' in session:
+    if 'email' in session:
         return redirect(url_for('dashboard'))
 
     if request.method == 'POST':
-        username = request.form.get('username', '').strip()
+        email = request.form.get('email', '').strip()
         password = request.form.get('password', '')
 
         # Input validation
-        if not username or not password:
+        if not email or not password:
             flash("Please fill all the fields.", 'warning')
             return render_template("login.html")
 
-        stmt = db.session.execute(select(User).where(User.username == username))
+        stmt = db.session.execute(select(User).where(User.email == email))
         user = stmt.scalars().one_or_none()
 
         if user is None:
-            flash('Invalid username or password', 'warning')
+            flash('Invalid email or password', 'warning')
             return render_template('login.html')
 
         if user.check_password(password):
             session.clear()
             session.permanent = True
-            session["username"] = username
+            session["email"] = email
             flash("Logged in successfully!", "success")
             return redirect(url_for("dashboard"))
 
-        flash("Invalid username or password", 'warning')
+        flash("Invalid email or password", 'warning')
 
     return render_template("login.html")
 

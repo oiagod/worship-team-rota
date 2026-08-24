@@ -12,3 +12,7 @@ class Config:
     PERMANENT_SESSION_LIFETIME = timedelta(minutes=30)
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SECURE = False #WARN: set to true in production with HTTPS
+
+    # Admin credentials
+    ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL")
+    ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD")
