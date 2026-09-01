@@ -51,6 +51,21 @@ class Service(db.Model):
     name: Mapped[str]
     date: Mapped[datetime] =  mapped_column(default=lambda: datetime.now(timezone.utc))
 
+
+class Song(db.Model):
+    __tablename__ = "songs"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str]
+    link: Mapped[str]
+    original_key: Mapped[str]
+
+class Setlist(db.Model):
+    __tablename__ = "setlist"
+    song_id: Mapped[int] = mapped_column(ForeignKey("songs.id"), primary_key=True)
+    service_id: Mapped[int] = mapped_column(ForeignKey("services.id"), primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), primary_key=True)
+    song_key: Mapped[str]
+
 def setup_admin():
     email = os.environ.get("ADMIN_EMAIL")
     password = os.environ.get("ADMIN_PASSWORD")
